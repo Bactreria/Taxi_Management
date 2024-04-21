@@ -1,0 +1,128 @@
+
+Create DATABASE  dbspro;
+USE dbspro;
+CREATE TABLE  Passengers (
+    passenger_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_name VARCHAR(255),
+    contact_number VARCHAR(255) UNIQUE,
+    address VARCHAR(255),
+    password VARCHAR(255) NOT NULL,
+	amount int
+);
+CREATE TABLE  Drivers (
+    driver_id INT PRIMARY KEY AUTO_INCREMENT,
+    driver_name VARCHAR(255),
+    contact_number VARCHAR(255) UNIQUE,
+    license_number VARCHAR(255) UNIQUE,
+    password VARCHAR(255) NOT NULL
+);
+CREATE TABLE Rides (
+    ride_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_id INT,
+    driver_id INT,
+    pickup_location VARCHAR(255),
+    dropoff_location VARCHAR(255),
+    ride_date DATETIME,
+    type VARCHAR(255),
+    status VARCHAR(255) CHECK (status IN ('NotBooked','Arriving', 'OntheWay', 'completed')),
+    FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id),
+    FOREIGN KEY (driver_id) REFERENCES Drivers(driver_id)
+);
+CREATE TABLE  Bookings (
+    booking_id INT PRIMARY KEY AUTO_INCREMENT,
+    ride_id INT,
+    booking_date DATETIME,
+    FOREIGN KEY (ride_id) REFERENCES Rides(ride_id)
+);
+CREATE TABLE  Payments (
+    payment_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_id INT,
+    ride_id INT,
+    booking_id INT,
+    payment_amount INT CHECK (payment_amount >= 0),
+    payment_date DATETIME,
+    FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id),
+    FOREIGN KEY (ride_id) REFERENCES Rides(ride_id),
+    FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id)
+);
+CREATE TABLE Ratings (
+    rating_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_id INT,
+    ride_id INT,
+    driver_id INT,
+    driver_rating INT CHECK (driver_rating >= 1 AND driver_rating <= 5),
+    comments VARCHAR(255),
+    FOREIGN KEY (passenger_id) REFERENCES Passengers(passenger_id),
+    FOREIGN KEY (ride_id) REFERENCES Rides(ride_id),
+    FOREIGN KEY (driver_id) REFERENCES Drivers(driver_id)
+);
+CREATE TABLE  Taxis (
+    taxi_id INT PRIMARY KEY AUTO_INCREMENT,
+    registration_number VARCHAR(255) UNIQUE,
+    type VARCHAR(255),
+    availability_status VARCHAR(255) CHECK (availability_status IN ('available', 'unavailable')),
+    driver_id INT,
+    FOREIGN KEY (driver_id) REFERENCES Drivers(driver_id)
+);
+
+CREATE TABLE  Maintenance (
+    maintenance_id INT PRIMARY KEY AUTO_INCREMENT,
+    taxi_id INT,
+    maintenance_date DATE,
+    maintenance_type VARCHAR(255) CHECK (maintenance_type IN ('Service', 'Repair')),
+    maintenance_description VARCHAR(255),
+    cost INT,
+    maintenance_provider VARCHAR(255),
+    FOREIGN KEY (taxi_id) REFERENCES Taxis(taxi_id)
+);
+CREATE TABLE  Taxi_Stand (
+    taxi_stand_id INT,
+    driver_id INT,
+    taxi_id INT,
+    address VARCHAR(255),
+    PRIMARY KEY (driver_id, taxi_id),
+    FOREIGN KEY (driver_id) REFERENCES Drivers(driver_id),
+    FOREIGN KEY (taxi_id) REFERENCES Taxis(taxi_id)
+);
+select * from Taxi_Stand;
+select * from Taxis;
+
+DELIMITER //
+
+CREATE PROCEDURE InsertRating(
+    IN p_passengerId INT,
+    IN p_driverId INT,
+    IN p_rideId INT,
+    IN p_driverRating INT,
+    IN p_comments VARCHAR(255)
+)
+BEGIN
+    INSERT INTO ratings (passenger_id, driver_id, ride_id, driver_rating, comments)
+    VALUES (p_passengerId, p_driverId, p_rideId, p_driverRating, p_comments);
+END //
+
+-- Reset the delimiter to ;
+DELIMITER ;
+
+
+
+
+DELIMITER //
+
+CREATE FUNCTION CalculateAverageRating(p_driverId INT) RETURNS DOUBLE
+DETERMINISTIC
+BEGIN
+    DECLARE avgRating DOUBLE;
+
+    SELECT AVG(driver_rating) INTO avgRating
+    FROM Ratings
+    WHERE driver_id = p_driverId;
+
+    IF avgRating IS NULL THEN
+        SET avgRating = 0;
+    END IF;
+
+    RETURN avgRating;
+END //
+
+DELIMITER ;
